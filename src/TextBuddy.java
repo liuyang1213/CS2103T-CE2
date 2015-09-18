@@ -50,9 +50,8 @@ public class TextBuddy {
 	private static final String MESSAGE_EMPTY = "%1s is empty";
 	private static final String MESSAGE_INVALID_FORMAT = "invalid command format: %1$s";
 	private static final String MESSAGE_NO_ARGUMENT = "We expect one argument";
-	private static final String MESSAGE_WRONG_ARGUMENT_FORMAT = "Arugment must end with .txt";
-	
-	private static final String COMMAND = "command:";
+	private static final String MESSAGE_WRONG_ARGUMENT_FORMAT = "Argument must end with .txt";
+	private static final String MESSAGE_WAIT_COMMAND = "command:";
 	
 	private static final int EXTENSION_LENGTH = 4;
 
@@ -113,10 +112,6 @@ public class TextBuddy {
 		System.out.println(text);
 	}
 	
-	private static void waitForCommand() {
-		System.out.print(COMMAND);
-	}
-	
 	/**
 	 * Execute the program until exit command is entered
 	 */
@@ -124,7 +119,7 @@ public class TextBuddy {
 		String command, feedback;
 		while(true) {
 			waitForCommand();
-			command = scanner.nextLine();
+			command = readCommand();
 			feedback = executeCommand(command);
 			showToUser(feedback);
 		}
@@ -139,6 +134,14 @@ public class TextBuddy {
 		}
 		String extensionName = fileName.substring(fileName.length() - EXTENSION_LENGTH);
 		return extensionName.equalsIgnoreCase(".txt");
+	}
+	
+	private static void waitForCommand() {
+		System.out.print(MESSAGE_WAIT_COMMAND);
+	}
+	
+	private static String readCommand() {
+		return scanner.nextLine();
 	}
 
 	static String executeCommand(String command) {
@@ -282,7 +285,6 @@ public class TextBuddy {
 	 */
 	private static void abort(String errorMessage) {
 		showToUser(errorMessage);
-//		System.exit(1);
 		Thread.currentThread().interrupt();
 	}
 	
@@ -299,12 +301,13 @@ public class TextBuddy {
 	 */
 	private static String generateContentList() {
 		String text = "";
-		int i;
-		
-		for(i=1; i<content_list.size(); i++) {
-			text += i + ". " + content_list.get(i-1) + "\n";
+		int contentSize = content_list.size();
+				
+		for(int i = 1; i < contentSize; i ++) {
+			text += i + ". " + content_list.get(i - 1) + "\n";
 		}
-		text += i + ". " + content_list.get(i-1); 	
+		text += contentSize + ". " + content_list.get(contentSize - 1); 
+		
 		return text;
 	}
 }
