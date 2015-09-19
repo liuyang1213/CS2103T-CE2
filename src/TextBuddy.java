@@ -278,7 +278,7 @@ public class TextBuddy {
 		if(contentList == null || contentList.size() < 1) {
 			return String.format(MESSAGE_EMPTY, fileName);
 		} else {
-			Collections.sort(contentList);
+			Collections.sort(contentList, new StringIgnoreCaseComparator());
 			return generateContentList(contentList);
 		}
 	}
@@ -365,4 +365,15 @@ public class TextBuddy {
 		}
 		return text;
 	}
+	
+	/**
+	 * This private nested class is used to define the way to compare to strings
+	 * The default sorting is case sensitive, for example, sort([a, Z]) -> ([Z, a]),
+	 * which is unexpected, so I defined this comparator to override the default one.
+	 */
+    private static class StringIgnoreCaseComparator implements Comparator<String> {
+        public int compare(String s1, String s2) {
+            return s1.toLowerCase().compareTo(s2.toLowerCase());
+        }
+    }
 }
