@@ -252,7 +252,7 @@ public class TextBuddy {
 	 * Add a new entry to contentList if the argument is not empty
 	 */
 	private static String processAddCommand(String arg) {
-		if(arg == null || arg.equals("")) {
+		if(isEmptyString(arg)) {
 			return MESSAGE_INCOMPLETE_EMPTY;
 		}
 		contentList.add(arg);
@@ -263,7 +263,7 @@ public class TextBuddy {
 	 * Show the current content in contentList if the list is not empty
 	 */
 	private static String processDisplayCommand() {
-		if(isEmpty(contentList)) {
+		if(isEmptyArray(contentList)) {
 			return String.format(MESSAGE_EMPTY, fileName);
 		} else {
 			return generateContentList(contentList);
@@ -274,7 +274,7 @@ public class TextBuddy {
 	 * Sort the list alphabetically, and show the sorted list
 	 */
 	private static String processSortCommand() {
-		if(isEmpty(contentList)) {
+		if(isEmptyArray(contentList)) {
 			return String.format(MESSAGE_EMPTY, fileName);
 		} else {
 			Collections.sort(contentList, new StringIgnoreCaseComparator());
@@ -286,7 +286,7 @@ public class TextBuddy {
 	 * Search all the items that contain the input word
 	 */
 	private static String processSearchCommand(String arg) {
-		if(arg == null || arg.equals("")) {
+		if(isEmptyString(arg)) {
 			return MESSAGE_INCOMPLETE_EMPTY;
 		}
 		
@@ -305,7 +305,7 @@ public class TextBuddy {
 	 */
 	private static String processDeleteCommand(String arg) {
 		// make sure user put in a valid index, otherwise report to them
-		if(arg == null || arg.equals("")) {
+		if(isEmptyString(arg)) {
 			return MESSAGE_INCOMPLETE_EMPTY;
 		} else if(!isNumeric(arg)) {
 			return MESSAGE_DELETE_NOT_EXIST;
@@ -374,7 +374,7 @@ public class TextBuddy {
 		String text = "";
 		int contentSize = list.size();
 				
-		if(!isEmpty(list)) {
+		if(!isEmptyArray(list)) {
 			// each item in the list occupies one line, with index added
 			for(int i = 1; i < contentSize; i ++) {
 				text += i + ". " + list.get(i - 1) + "\n";
@@ -394,7 +394,7 @@ public class TextBuddy {
 	private static ArrayList<String> filterByKeyword(String keyword) {
 		ArrayList<String> searchResult = new ArrayList<String>();
 		
-		if(isEmpty(contentList)) {
+		if(isEmptyArray(contentList)) {
 			return searchResult;
 		}
 		
@@ -418,8 +418,15 @@ public class TextBuddy {
 	/**
 	 * Check whether the given list is empty
 	 */
-	private static boolean isEmpty(ArrayList<String> list) {
+	private static boolean isEmptyArray(ArrayList<String> list) {
 		return list == null || list.size() == 0;
+	}
+	
+	/**
+	 * Check whether the given string is empty
+	 */
+	private static boolean isEmptyString(String s) {
+		return s == null || s.equals("");
 	}
 	
 	/**
@@ -434,7 +441,7 @@ public class TextBuddy {
 	 */
     private static void writeToFile() {
     	try {
-    		if(!isEmpty(contentList)) {
+    		if(!isEmptyArray(contentList)) {
     			writer.write(generateContentList(contentList));
     		}
     	} catch (IOException e) {
