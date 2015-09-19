@@ -2,7 +2,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -56,7 +55,7 @@ public class TextBuddy {
 	// Messages constants used to display to user
 	private static final String MESSAGE_WELCOME = "Welcome to TextBuddy. %1s is ready for use";
 	private static final String MESSAGE_ADDED = "added to %1s: \"%2s\"";
-	private static final String MESSAGE_ADD_EMPTY = "Cannot add empty message";
+	private static final String MESSAGE_INCOMPLETE_EMPTY = "Please give more detailed instruction";
 	private static final String MESSAGE_NO_SEARCH_RESULT = "No item contains \"%1s\"";
 	private static final String MESSAGE_DELETED = "deleted from %1s: \"%2s\"";
 	private static final String MESSAGE_DELETE_NOT_EXIST = "this line does not exist";
@@ -66,6 +65,7 @@ public class TextBuddy {
 	private static final String MESSAGE_NO_ARGUMENT = "We expect one argument";
 	private static final String MESSAGE_WRONG_ARGUMENT_FORMAT = "Argument must end with .txt";
 	private static final String MESSAGE_WAIT_COMMAND = "command:";
+	private static final String MESSAGE_UNEXPECTED_ERROR = "Sorry, unexpected error, please report";
 	
 	// This is the required length of the argument's extension name, which is .txt
 	private static final int EXTENSION_LENGTH = 4;
@@ -86,10 +86,14 @@ public class TextBuddy {
 	};
 	
 	public static void main(String[] args){
-		getAndValidateFilename(args);
-		initialize();
-		showToUser(generateWelcomeMessage());
-		execute();
+		try {
+			getAndValidateFilename(args);
+			initialize();
+			showToUser(generateWelcomeMessage());
+			execute();
+		} catch (Exception e) {
+			abort(MESSAGE_UNEXPECTED_ERROR);
+		}
 	}
 
 	/**
@@ -227,51 +231,39 @@ public class TextBuddy {
 
 		if (commandTypeString.equalsIgnoreCase("add")) {
 			return COMMAND_TYPE.ADD;
-		}
-		
-		if (commandTypeString.equalsIgnoreCase("display")) {
+		} else if (commandTypeString.equalsIgnoreCase("display")) {
 			return COMMAND_TYPE.DISPLAY;
-		} 
-		
-		if (commandTypeString.equalsIgnoreCase("sort")) {
+		} else if (commandTypeString.equalsIgnoreCase("sort")) {
 			return COMMAND_TYPE.SORT;
-		} 
-		
-		if (commandTypeString.equalsIgnoreCase("search")) {
+		} else if (commandTypeString.equalsIgnoreCase("search")) {
 			return COMMAND_TYPE.SEARCH;
-		} 
-		
-		if (commandTypeString.equalsIgnoreCase("delete")) {
+		} else if (commandTypeString.equalsIgnoreCase("delete")) {
 		 	return COMMAND_TYPE.DELETE;
-		}
-		
-		if (commandTypeString.equalsIgnoreCase("clear")) {
+		} else if (commandTypeString.equalsIgnoreCase("clear")) {
 		 	return COMMAND_TYPE.CLEAR;
-		}
-		
-		if (commandTypeString.equalsIgnoreCase("exit")) {
+		} else if (commandTypeString.equalsIgnoreCase("exit")) {
 		 	return COMMAND_TYPE.EXIT;
+		} else {
+			return COMMAND_TYPE.INVALID;
 		}
-		
-		return COMMAND_TYPE.INVALID;
 	}
 	
 	/**
 	 * Add a new entry to contentList if the argument is not empty
 	 */
-	private static String processAddCommand(String args) {
-		if(args == null || args.equals("")) {
-			return MESSAGE_ADD_EMPTY;
+	private static String processAddCommand(String arg) {
+		if(arg == null || arg.equals("")) {
+			return MESSAGE_INCOMPLETE_EMPTY;
 		}
-		contentList.add(args);
-		return String.format(MESSAGE_ADDED, fileName, args);
+		contentList.add(arg);
+		return String.format(MESSAGE_ADDED, fileName, arg);
 	}
 	
 	/**
 	 * Show the current content in contentList if the list is not empty
 	 */
 	private static String processDisplayCommand() {
-		if(contentList == null || contentList.size() < 1) {
+		if(isEmpty(contentList)) {
 			return String.format(MESSAGE_EMPTY, fileName);
 		} else {
 			return generateContentList(contentList);
@@ -282,7 +274,7 @@ public class TextBuddy {
 	 * Sort the list alphabetically, and show the sorted list
 	 */
 	private static String processSortCommand() {
-		if(contentList == null || contentList.size() < 1) {
+		if(isEmpty(contentList)) {
 			return String.format(MESSAGE_EMPTY, fileName);
 		} else {
 			Collections.sort(contentList, new StringIgnoreCaseComparator());
@@ -293,15 +285,16 @@ public class TextBuddy {
 	/**
 	 * Search all the items that contain the input word
 	 */
-	private static String processSearchCommand(String commandArgs) {
-		ArrayList<String> searchResult = new ArrayList<String>();
-		
-		if(contentList != null) {
-			filterByKeyword(searchResult, commandArgs);
+	private static String processSearchCommand(String arg) {
+		if(arg == null || arg.equals("")) {
+			return MESSAGE_INCOMPLETE_EMPTY;
 		}
 		
+		ArrayList<String> searchResult = filterByKeyword(arg);
+		
 		if(searchResult.size() < 1) {
-			return String.format(MESSAGE_NO_SEARCH_RESULT, commandArgs);
+			// if no result found, inform user that the result is empty
+			return String.format(MESSAGE_NO_SEARCH_RESULT, arg);
 		} else {
 			return generateContentList(searchResult);
 		}
@@ -311,9 +304,17 @@ public class TextBuddy {
 	 * Delete an entry based on the argument, if there is a valid argument
 	 */
 	private static String processDeleteCommand(String arg) {
+		// make sure user put in a valid index, otherwise report to them
+		if(arg == null || arg.equals("")) {
+			return MESSAGE_INCOMPLETE_EMPTY;
+		} else if(!isNumeric(arg)) {
+			return MESSAGE_DELETE_NOT_EXIST;
+		}
+		
 		int indexToDelete = Integer.parseInt(arg) - 1;
 		String deletedContent;
 		
+		// first make sure that the item to delete exists, if not, report to user
 		if(contentList == null || indexToDelete < 0 || indexToDelete >= contentList.size()) {
 			return MESSAGE_DELETE_NOT_EXIST;
 		} else {
@@ -335,15 +336,14 @@ public class TextBuddy {
 	 * Write the content into the created file, stop running
 	 */
 	private static String processExitCommand() {
-		try {
-			if(contentList != null && contentList.size() > 0) {
-				writer.write(generateContentList(contentList));
-			}
-			writer.close();
-			System.exit(0);
-		} catch (IOException e) {
-			abort(e.getMessage());
-		}
+		// before exiting, write the recorded content to the file
+		writeToFile();
+		
+		closeWriter();
+		stop();
+		
+		// this line will never be reached, but this method must return a string
+		// for executeCommand 
 		return "";
 	}
 	
@@ -357,14 +357,6 @@ public class TextBuddy {
 	private static String generateWelcomeMessage() {
 		return String.format(MESSAGE_WELCOME, fileName);
 	}
-		
-	/**
-	 * Stop running the program can show error message
-	 */
-	private static void abort(String errorMessage) {
-		showToUser(errorMessage);
-		System.exit(1);;
-	}
 	
 	private static String removeFirstWord(String userCommand) {
 		return userCommand.replace(getFirstWord(userCommand), "").trim();
@@ -375,28 +367,40 @@ public class TextBuddy {
 	}
 
 	/**
-	 * Organize the content in the input list, give each entry an index
+	 * Organize the content stored in input list in a format that can be
+	 * displayed to user and easy for user to read
 	 */
 	private static String generateContentList(ArrayList<String> list) {
 		String text = "";
 		int contentSize = list.size();
 				
-		for(int i = 1; i < contentSize; i ++) {
-			text += i + ". " + list.get(i - 1) + "\n";
-		}
-		if(contentSize > 0) {
+		if(!isEmpty(list)) {
+			// each item in the list occupies one line, with index added
+			for(int i = 1; i < contentSize; i ++) {
+				text += i + ". " + list.get(i - 1) + "\n";
+			}
+			
+			// do no attach 'new line symbol' at the end of the last item
 			text += contentSize + ". " + list.get(contentSize - 1); 
+			
 		}
+	
 		return text;
 	}
 	
 	/**
-	 * Filter the content list by the given keyword
+	 * Filter the content list by the given keyword, this search is case insensitive
 	 */
-	private static ArrayList<String> filterByKeyword(ArrayList<String> searchResult, 
-			String keyword) {
+	private static ArrayList<String> filterByKeyword(String keyword) {
+		ArrayList<String> searchResult = new ArrayList<String>();
+		
+		if(isEmpty(contentList)) {
+			return searchResult;
+		}
 		
 		int contentSize = contentList.size();
+		
+		// since this is a case insensitive search, transfer strings to lower case first
 		String currentItem, lowerCaseContent;
 		String lowerCaseKeyword = keyword.toLowerCase();
 		
@@ -412,6 +416,58 @@ public class TextBuddy {
 	}
 	
 	/**
+	 * Check whether the given list is empty
+	 */
+	private static boolean isEmpty(ArrayList<String> list) {
+		return list == null || list.size() == 0;
+	}
+	
+	/**
+	 * Check whether the given list is empty
+	 */
+	private static boolean isNumeric(String s) {
+		return s.matches("[-+]?\\d*\\.?\\d+");  
+	}
+	
+	/**
+	 * Write the content previously stored contentList into the file
+	 */
+    private static void writeToFile() {
+    	try {
+    		if(!isEmpty(contentList)) {
+    			writer.write(generateContentList(contentList));
+    		}
+    	} catch (IOException e) {
+			abort(e.getMessage());
+		}
+    }
+    
+    private static void closeWriter() {
+    	try {
+        	writer.close();
+    	} catch (IOException e) {
+			abort(e.getMessage());
+		}
+    }
+    
+	/**
+	 * Stop running the program can show error message
+	 */
+	private static void abort(String errorMessage) {
+		showToUser(errorMessage);
+		System.exit(1);
+	}
+	
+	/**
+	 * Quit the program, this is different from abort because:
+	 *	(1). this is normal exiting, but abort is exiting due to error
+	 *  (2). this does not show any message to user
+	 */
+    private static void stop() {
+    	System.exit(0);	
+    }
+	
+	/**
 	 * This private nested class is used to define the way to compare to strings
 	 * The default sorting is case sensitive, for example, sort([a, Z]) -> ([Z, a]),
 	 * which is unexpected, so I defined this comparator to override the default one.
@@ -421,4 +477,5 @@ public class TextBuddy {
             return s1.toLowerCase().compareTo(s2.toLowerCase());
         }
     }
+  
 }
