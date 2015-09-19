@@ -82,7 +82,7 @@ public class TextBuddy {
 	
 	// These are the possible command types
 	enum COMMAND_TYPE {
-		ADD, DISPLAY, DELETE, CLEAR, INVALID, EXIT
+		ADD, DISPLAY, SORT, DELETE, CLEAR, INVALID, EXIT
 	};
 	
 	public static void main(String[] args){
@@ -196,6 +196,9 @@ public class TextBuddy {
 			case DISPLAY:
 				feedback = processDisplayCommand();
 				break;
+			case SORT:
+				feedback = processSortCommand();
+				break;
 			case DELETE:
 				feedback = processDeleteCommand(commandArgs);
 				break;
@@ -225,6 +228,10 @@ public class TextBuddy {
 		
 		if (commandTypeString.equalsIgnoreCase("display")) {
 			return COMMAND_TYPE.DISPLAY;
+		} 
+		
+		if (commandTypeString.equalsIgnoreCase("sort")) {
+			return COMMAND_TYPE.SORT;
 		} 
 		
 		if (commandTypeString.equalsIgnoreCase("delete")) {
@@ -260,6 +267,18 @@ public class TextBuddy {
 		if(contentList == null || contentList.size() < 1) {
 			return String.format(MESSAGE_EMPTY, fileName);
 		} else {
+			return generateContentList(contentList);
+		}
+	}
+	
+	/**
+	 * Sort the list alphabetically, and show the sorted list
+	 */
+	private static String processSortCommand() {
+		if(contentList == null || contentList.size() < 1) {
+			return String.format(MESSAGE_EMPTY, fileName);
+		} else {
+			Collections.sort(contentList);
 			return generateContentList(contentList);
 		}
 	}
