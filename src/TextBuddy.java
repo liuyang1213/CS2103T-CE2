@@ -2,7 +2,10 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Scanner;
 
 /**
@@ -19,10 +22,18 @@ import java.util.Scanner;
 	command: display
 	1. little brown fox
 	2. jumped over the moon
-	command: delete 2
-	deleted from mytextfile.txt: “jumped over the moon”
+	command: sort
+	1. jumped over the moon
+	2. little brown fox
+	command: search over
+	1. jumped over the moon
 	command: display
-	1. little brown fox
+	1. jumped over the moon
+	2. little brown fox
+	command: delete 2
+	deleted from mytextfile.txt: “little brown fox”
+	command: display
+	1. jumped over the moon
 	command: clear
 	all content deleted from mytextfile.txt
 	command: display
@@ -41,27 +52,33 @@ import java.util.Scanner;
  * @author Liu Yang
  */
 public class TextBuddy {
+	
+	// Messages constants used to display to user
 	private static final String MESSAGE_WELCOME = "Welcome to TextBuddy. %1s is ready for use";
 	private static final String MESSAGE_ADDED = "added to %1s: \"%2s\"";
 	private static final String MESSAGE_ADD_EMPTY = "Cannot add empty message";
+	private static final String MESSAGE_NO_SEARCH_RESULT = "No item contains \"%1s\"";
 	private static final String MESSAGE_DELETED = "deleted from %1s: \"%2s\"";
 	private static final String MESSAGE_DELETE_NOT_EXIST = "this line does not exist";
 	private static final String MESSAGE_CLEARED = "all content deleted from %1s";
 	private static final String MESSAGE_EMPTY = "%1s is empty";
-	private static final String MESSAGE_INVALID_FORMAT = "invalid command format: %1$s";
+	private static final String MESSAGE_INVALID_FORMAT = "invalid command format: %1s";
 	private static final String MESSAGE_NO_ARGUMENT = "We expect one argument";
 	private static final String MESSAGE_WRONG_ARGUMENT_FORMAT = "Argument must end with .txt";
 	private static final String MESSAGE_WAIT_COMMAND = "command:";
 	
+	// This is the required length of the argument's extension name, which is .txt
 	private static final int EXTENSION_LENGTH = 4;
 
+	// These are variables used to read command and write to file
 	private static Scanner scanner = new Scanner(System.in);
 	private static BufferedWriter writer = null;
 
+	// This is declared for the whole class because it is used by more than one methods
 	private static String fileName = null;
 	
 	// This array list will be used to store the content added
-	private static ArrayList<String> content_list = new ArrayList<String>();
+	private static ArrayList<String> contentList = new ArrayList<String>();
 	
 	// These are the possible command types
 	enum COMMAND_TYPE {
@@ -70,9 +87,9 @@ public class TextBuddy {
 	
 	public static void main(String[] args){
 		getAndValidateFilename(args);
-		createFile();
+		initialize();
 		showToUser(generateWelcomeMessage());
-		run();
+		execute();
 	}
 
 	/**
@@ -89,23 +106,15 @@ public class TextBuddy {
 		} else if(!validFileName(args[0])) {
 			abort(MESSAGE_WRONG_ARGUMENT_FORMAT);
 		} else {
+			// set the class variable after ensuring it is valid
 			fileName = args[0];
 		}
 	}
 	
-	/**
-	 * Create or overwirte file named as fileName in this class
-	 */
-	static void createFile() {
-		try {
-			File file = new File(fileName);
-			if(!file.exists()) {
-				file.createNewFile();
-			}
-			writer = new BufferedWriter(new FileWriter(file));
-		} catch (IOException e) {
-			abort(e.getMessage());
-		}
+	static void initialize() {
+		createFile();
+		// empty the list that storing content
+		contentList = new ArrayList<String>();
 	}
 	
 	private static void showToUser(String text) {
@@ -115,7 +124,7 @@ public class TextBuddy {
 	/**
 	 * Execute the program until exit command is entered
 	 */
-	private static void run() {
+	private static void execute() {
 		String command, feedback;
 		while(true) {
 			waitForCommand();
@@ -136,6 +145,28 @@ public class TextBuddy {
 		return extensionName.equalsIgnoreCase(".txt");
 	}
 	
+	/**
+	 * Create or overwirte file named as fileName in this class
+	 */
+	private static void createFile() {
+		try {
+			File file = new File(fileName);
+			if(!file.exists()) {
+				// if file with this name exists, overwrite this file, starting from empty
+				file.createNewFile();
+			}
+			// initialize a writer to the created file
+			writer = new BufferedWriter(new FileWriter(file));
+		} catch (IOException e) {
+			// stop running if error occur during creating the file
+			abort(e.getMessage());
+		}
+	}
+	
+	/**
+	 * Ask user to type in command, this is different from showToUser since it does not
+	 * create a new line
+	 */
 	private static void waitForCommand() {
 		System.out.print(MESSAGE_WAIT_COMMAND);
 	}
@@ -144,6 +175,9 @@ public class TextBuddy {
 		return scanner.nextLine();
 	}
 
+	/**
+	 * Parse the command, and then execute command based on its type
+	 */
 	static String executeCommand(String command) {
 		if (command.trim().equals("")) {
 			return String.format(MESSAGE_INVALID_FORMAT, command);
@@ -209,24 +243,24 @@ public class TextBuddy {
 	}
 	
 	/**
-	 * Add a new entry to content_list if the argument is not empty
+	 * Add a new entry to contentList if the argument is not empty
 	 */
 	private static String processAddCommand(String args) {
 		if(args == null || args.equals("")) {
 			return MESSAGE_ADD_EMPTY;
 		}
-		content_list.add(args);
+		contentList.add(args);
 		return String.format(MESSAGE_ADDED, fileName, args);
 	}
 	
 	/**
-	 * Show the current content in content_list if the list is not empty
+	 * Show the current content in contentList if the list is not empty
 	 */
 	private static String processDisplayCommand() {
-		if(content_list == null || content_list.size() < 1) {
+		if(contentList == null || contentList.size() < 1) {
 			return String.format(MESSAGE_EMPTY, fileName);
 		} else {
-			return generateContentList();
+			return generateContentList(contentList);
 		}
 	}
 
@@ -236,20 +270,21 @@ public class TextBuddy {
 	private static String processDeleteCommand(String arg) {
 		int indexToDelete = Integer.parseInt(arg) - 1;
 		String deletedContent;
-		if(content_list == null || indexToDelete < 0 || indexToDelete >= content_list.size()) {
+		
+		if(contentList == null || indexToDelete < 0 || indexToDelete >= contentList.size()) {
 			return MESSAGE_DELETE_NOT_EXIST;
 		} else {
-			deletedContent = content_list.get(indexToDelete);
-			content_list.remove(indexToDelete);
+			deletedContent = contentList.get(indexToDelete);
+			contentList.remove(indexToDelete);
 			return String.format(MESSAGE_DELETED, fileName, deletedContent);
 		}
 	}
 	
 	/**
-	 * Clear the content_list
+	 * Clear the contentList
 	 */
 	private static String processClearCommand() {
-		content_list.clear();
+		contentList.clear();
 		return String.format(MESSAGE_CLEARED, fileName);
 	}
 	
@@ -258,8 +293,8 @@ public class TextBuddy {
 	 */
 	private static String processExitCommand() {
 		try {
-			if(content_list != null && content_list.size() > 0) {
-				writer.write(generateContentList());
+			if(contentList != null && contentList.size() > 0) {
+				writer.write(generateContentList(contentList));
 			}
 			writer.close();
 			System.exit(0);
@@ -285,7 +320,7 @@ public class TextBuddy {
 	 */
 	private static void abort(String errorMessage) {
 		showToUser(errorMessage);
-		Thread.currentThread().interrupt();
+		System.exit(1);;
 	}
 	
 	private static String removeFirstWord(String userCommand) {
@@ -297,17 +332,18 @@ public class TextBuddy {
 	}
 
 	/**
-	 * Organize the content stored in this class, give each entry an index
+	 * Organize the content in the input list, give each entry an index
 	 */
-	private static String generateContentList() {
+	private static String generateContentList(ArrayList<String> list) {
 		String text = "";
-		int contentSize = content_list.size();
+		int contentSize = list.size();
 				
 		for(int i = 1; i < contentSize; i ++) {
-			text += i + ". " + content_list.get(i - 1) + "\n";
+			text += i + ". " + list.get(i - 1) + "\n";
 		}
-		text += contentSize + ". " + content_list.get(contentSize - 1); 
-		
+		if(contentSize > 0) {
+			text += contentSize + ". " + list.get(contentSize - 1); 
+		}
 		return text;
 	}
 }
