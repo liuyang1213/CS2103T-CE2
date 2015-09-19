@@ -82,7 +82,7 @@ public class TextBuddy {
 	
 	// These are the possible command types
 	enum COMMAND_TYPE {
-		ADD, DISPLAY, SORT, DELETE, CLEAR, INVALID, EXIT
+		ADD, DISPLAY, SORT, SEARCH, DELETE, CLEAR, INVALID, EXIT
 	};
 	
 	public static void main(String[] args){
@@ -199,6 +199,9 @@ public class TextBuddy {
 			case SORT:
 				feedback = processSortCommand();
 				break;
+			case SEARCH:
+				feedback = processSearchCommand(commandArgs);
+				break;
 			case DELETE:
 				feedback = processDeleteCommand(commandArgs);
 				break;
@@ -232,6 +235,10 @@ public class TextBuddy {
 		
 		if (commandTypeString.equalsIgnoreCase("sort")) {
 			return COMMAND_TYPE.SORT;
+		} 
+		
+		if (commandTypeString.equalsIgnoreCase("search")) {
+			return COMMAND_TYPE.SEARCH;
 		} 
 		
 		if (commandTypeString.equalsIgnoreCase("delete")) {
@@ -280,6 +287,23 @@ public class TextBuddy {
 		} else {
 			Collections.sort(contentList, new StringIgnoreCaseComparator());
 			return generateContentList(contentList);
+		}
+	}
+	
+	/**
+	 * Search all the items that contain the input word
+	 */
+	private static String processSearchCommand(String commandArgs) {
+		ArrayList<String> searchResult = new ArrayList<String>();
+		
+		if(contentList != null) {
+			filterByKeyword(searchResult, commandArgs);
+		}
+		
+		if(searchResult.size() < 1) {
+			return String.format(MESSAGE_NO_SEARCH_RESULT, commandArgs);
+		} else {
+			return generateContentList(searchResult);
 		}
 	}
 
@@ -364,6 +388,27 @@ public class TextBuddy {
 			text += contentSize + ". " + list.get(contentSize - 1); 
 		}
 		return text;
+	}
+	
+	/**
+	 * Filter the content list by the given keyword
+	 */
+	private static ArrayList<String> filterByKeyword(ArrayList<String> searchResult, 
+			String keyword) {
+		
+		int contentSize = contentList.size();
+		String currentItem, lowerCaseContent;
+		String lowerCaseKeyword = keyword.toLowerCase();
+		
+		for(int i = 0; i < contentSize; i ++) {
+			currentItem = contentList.get(i);
+			lowerCaseContent = currentItem.toLowerCase();
+			
+			if(lowerCaseContent.contains(lowerCaseKeyword)) {
+				searchResult.add(currentItem);
+			}
+		}
+		return searchResult;
 	}
 	
 	/**
